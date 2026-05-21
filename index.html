@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Maipú 3D: Plaza Aventura - Videojuego tridimensional en navegador ambientado en la Plaza de Armas de Maipú. Camina, salta, e interactúa con personajes locales.">
+  <title>Maipú 3D: Plaza Aventura 🏢🌳🎮</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Load Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <header>
+    <h1 class="game-title">MAIPÚ 3D</h1>
+    <p class="game-subtitle">Plaza Aventura</p>
+  </header>
+
+  <!-- Arcade 3D Frame -->
+  <main class="arcade-cabinet" id="arcade-3d-cabinet">
+    
+    <!-- Audio control toggle -->
+    <div class="system-toggles">
+      <button class="toggle-btn" id="sound-toggle" title="Silenciar / Activar sonido" aria-label="Toggle Sound">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- 3D Canvas Screen Wrapper -->
+    <div class="screen-wrapper" id="canvas-container">
+      
+      <!-- Scanlines CRT filter -->
+      <div class="screen-scanlines"></div>
+
+      <!-- Canvas for WebGL 3D rendering (will be appended by JS, fallback placeholder) -->
+      <div id="webgl-fallback">Cargando Motor Gráfico 3D WebGL...</div>
+
+      <!-- IN-GAME HUD OVERLAY (glowing overlay on top of WebGL) -->
+      <div class="hud-layer hidden" id="game-hud">
+        
+        <!-- Top row: Status stats -->
+        <div class="hud-top">
+          <!-- Left: Selected character and energy -->
+          <div class="hud-panel char-hud">
+            <span class="hud-label" id="hud-char-name">Don Lucho</span>
+            <div class="hud-energy-bar"><div class="hud-energy-fill" id="hud-energy"></div></div>
+          </div>
+          
+          <!-- Middle: Level / Location -->
+          <div class="hud-panel loc-hud">
+            <span class="hud-label" style="color: var(--primary-neon);">Plaza de Maipú</span>
+          </div>
+
+          <!-- Right: Inventario (Coins & Sopaipillas) -->
+          <div class="hud-panel inv-hud">
+            <div class="inv-item">
+              <span class="inv-icon">🪙</span>
+              <span class="inv-val" id="hud-coins">0</span>
+            </div>
+            <div class="inv-item">
+              <span class="inv-icon">🥟</span>
+              <span class="inv-val" id="hud-sopaipillas">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle left: Mission indicator -->
+        <div class="hud-panel mission-hud">
+          <h4>Misiones:</h4>
+          <ul id="mission-list">
+            <li id="m-sopaipillas">• Junta 5 Sopaipillas (0/5)</li>
+            <li id="m-plantas">• Compra la Planta Rara (0/1)</li>
+            <li id="m-ladron">• Evita al Lanza</li>
+          </ul>
+        </div>
+
+        <!-- Bottom Dialogue Box (Slides up when interacting with NPCs) -->
+        <div class="dialogue-panel hidden" id="dialogue-panel">
+          <div class="dialogue-left">
+            <!-- Procedural CSS portrait bubble representing characters -->
+            <div class="dialogue-portrait" id="dialogue-portrait">
+              <div class="portrait-avatar" id="portrait-avatar">👤</div>
+            </div>
+          </div>
+          <div class="dialogue-body">
+            <h3 class="dialogue-name" id="dialogue-speaker">Señora de las Monedas</h3>
+            <p class="dialogue-text" id="dialogue-text">Hola mijito/a, ¿tendrá una monedita para el pancito por favor?...</p>
+            <div class="dialogue-options" id="dialogue-options">
+              <!-- Rendered dynamically via JS -->
+              <button class="dialogue-opt-btn">Dar Moneda (-1 🪙)</button>
+              <button class="dialogue-opt-btn">Hablar educadamente</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Float Notification (Power-up activation etc) -->
+        <div class="hud-notification hidden" id="hud-toast">¡Súper Salto Activo! Jump high!</div>
+      </div>
+
+      <!-- OVERLAY: START / CHARACTER SELECTION SCREEN -->
+      <div class="screen-overlay" id="menu-overlay">
+        
+        <!-- Beautiful Splash Banner Created by AI -->
+        <div class="splash-banner-container">
+          <img src="assets/banner.png" alt="Maipú Aventura Banner" class="splash-banner">
+        </div>
+
+        <h2 class="char-selector-title" style="margin-top: 10px;">SELECCIONA TU VECINO EN 3D</h2>
+        
+        <div class="char-grid">
+          
+          <!-- Character 1: Don Lucho -->
+          <div class="char-card selected" data-char="lucho" id="card-lucho">
+            <div class="char-avatar-container" style="background: rgba(255, 51, 102, 0.15); border-color: var(--accent-red);">
+              <span style="font-size: 2.2rem;">👨‍🌾</span>
+            </div>
+            <h3 class="char-name">Don Lucho</h3>
+            <p class="char-desc">Típico tío maipucino. Resistente, con chupalla y poncho. ¡Listo para defender la plaza!</p>
+            <div class="char-stats">
+              <div class="stat-row">
+                <span class="stat-label">Habilidad</span>
+                <span class="stat-value" style="color: var(--accent-red); font-weight: 800;">Súper Salud (100 HP)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Character 2: Doña Carmen -->
+          <div class="char-card" data-char="carmen" id="card-carmen">
+            <div class="char-avatar-container" style="background: rgba(0, 242, 254, 0.15); border-color: var(--primary-neon);">
+              <span style="font-size: 2.2rem;">👩‍🏫</span>
+            </div>
+            <h3 class="char-name">Doña Carmen</h3>
+            <p class="char-desc">Profesora rural e inteligente. Agilidad extrema. Puede dar <strong>Doble Salto</strong> de forma permanente.</p>
+            <div class="char-stats">
+              <div class="stat-row">
+                <span class="stat-label">Habilidad</span>
+                <span class="stat-value" style="color: var(--primary-neon); font-weight: 800;">Doble Salto Nativo</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Character 3: El Quiltro -->
+          <div class="char-card" data-char="quiltro" id="card-quiltro">
+            <div class="char-avatar-container" style="background: rgba(255, 215, 0, 0.15); border-color: var(--accent-gold);">
+              <span style="font-size: 2.2rem;">🐕</span>
+            </div>
+            <h3 class="char-name">El Quiltro</h3>
+            <p class="char-desc">El regalón stray dog de la Plaza de Maipú. Súper veloz. Puede <strong>Ladrar (tecla G)</strong> para asustar al Ladrón.</p>
+            <div class="char-stats">
+              <div class="stat-row">
+                <span class="stat-label">Habilidad</span>
+                <span class="stat-value" style="color: var(--accent-gold); font-weight: 800;">Súper Velocidad & Ladrar</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <button class="btn-retro" id="btn-start" style="width: 280px;">Ingresar a la Plaza</button>
+      </div>
+
+      <!-- OVERLAY: GAME OVER -->
+      <div class="screen-overlay hidden" id="gameover-overlay">
+        <h2 class="char-selector-title" style="color: var(--accent-red); animation: none; font-size: 1.5rem;">¡ASALTADO EN LA PLAZA!</h2>
+        <p style="margin-bottom: 20px; font-size: 1.1rem; color: var(--text-secondary); max-width: 500px;">
+          El Ladrón te asaltó y te quitó toda tu energía y monedas chilenas. ¡Hay que estar más vivo en las calles de Santiago!
+        </p>
+        <button class="btn-retro accent" id="btn-restart">Volver a Intentarlo</button>
+      </div>
+
+      <!-- OVERLAY: VICTORY -->
+      <div class="screen-overlay hidden" id="victory-overlay">
+        <h2 class="char-selector-title" style="color: var(--success); text-shadow: 0 0 15px rgba(16, 185, 129, 0.5); font-size: 1.5rem;">¡HÉROE DE LA COMUNA!</h2>
+        <p style="margin-bottom: 20px; font-size: 1rem; color: var(--text-secondary); max-width: 600px; line-height: 1.6;">
+          ¡Maravilloso! Conseguiste todas las sopaipillas perdidas, le compraste la planta rara al florista, ayudaste a la señora de la Plaza dándole una moneda, y mantuviste a raya al astuto ladrón.
+        </p>
+        <p style="margin-bottom: 30px; font-size: 1.1rem; color: var(--text-primary); font-weight: bold;">
+          🏛️ El Alcalde Tomás Vodanovic te premia con el título de <strong>Vecino Ilustre de Maipú</strong>.
+        </p>
+        <button class="btn-retro" id="btn-win-restart" style="background: linear-gradient(135deg, var(--success), #059669); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), 0 4px 0 #047857;">¡Jugar de Nuevo!</button>
+      </div>
+
+    </div>
+
+    <!-- Arcade physical controls -->
+    <div class="control-panel">
+      <div class="instructions-card">
+        🎮 <strong>Controles 3D (PC):</strong> <br>
+        • Moverse: Teclas <strong>WASD</strong> o <strong>Flechas de Dirección</strong>.<br>
+        • Saltar: Tecla <strong>Espacio</strong>. <br>
+        • Interactuar con personajes: Tecla <strong>E</strong> o <strong>Enter</strong> cuando estés cerca.<br>
+        • Habilidad Especial (Quiltro): Tecla <strong>G</strong> para ladrar.<br>
+        • Cámara: Arrastra el <strong>Mouse</strong> en la pantalla para rotar la cámara 360°.
+      </div>
+
+      <!-- Mobile Touch Controls -->
+      <div class="mobile-controls">
+        <!-- virtual joystick area will be rendered by JS -->
+        <div id="virtual-joystick-container" style="position: relative; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%;">
+          <div id="virtual-joystick-knob" style="position: absolute; width: 40px; height: 40px; background: var(--primary-neon); border-radius: 50%; top: 28px; left: 28px; box-shadow: 0 0 10px var(--primary-neon);"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="control-btn" id="touch-interact" style="border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255,215,0,0.1); width: 64px; height: 64px;">[ E ]<br>HABLAR</button>
+          <button class="control-btn" id="touch-jump" style="width: 64px; height: 64px;">SALTAR</button>
+          <button class="control-btn hidden" id="touch-bark" style="border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.1); width: 64px; height: 64px;">[ G ]<br>LADRAR</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Under-cabinet trivia and scores -->
+  <section class="dashboard-grid">
+    
+    <!-- Dynamic info board -->
+    <div class="info-panel">
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        Patrimonio Urbano: Plaza de Maipú
+      </h3>
+      <p id="trivia-text">
+        Selecciona tu vecino en 3D, ingresa a la Plaza de Armas, y recorre los rincones de este centro cívico. Conversa con el Alcalde Tomás Vodanovic, cuídate de los asaltos nocturnos de los ladrones y explora con tu cámara en 360 grados.
+      </p>
+      <div class="trivia-highlight" id="trivia-author">
+        ¿Sabías qué? La Plaza de Maipú cruza las avenidas Pajaritos y 5 de Abril, siendo uno de los puntos cívicos más concurridos de Santiago.
+      </div>
+    </div>
+
+    <!-- NPC Directory -->
+    <div class="high-scores-panel">
+      <h3>Vecinos Ilustres y Personajes</h3>
+      <ul class="score-list" style="font-family: inherit; font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
+        <li>👨‍💼 <strong>Alcalde Tomás Vodanovic:</strong> Cerca de la muni.</li>
+        <li>👩‍🦳 <strong>Señora de las Monedas:</strong> Fuera del Metro.</li>
+        <li>🚨 <strong>Director de Tránsito:</strong> En el cruce vial.</li>
+        <li>🥷 <strong>El Ladrón ("Lanza"):</strong> Merodea los arbustos.</li>
+        <li>🪴 <strong>Vendedor de Plantas Raras:</strong> En los jardines ocultos.</li>
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- Web Audio Synth & Game Engine -->
+  <script src="game3d.js"></script>
+</body>
+</html>

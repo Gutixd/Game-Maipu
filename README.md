@@ -17,5 +17,4 @@ CSS3
 JavaScript
 Renderizado 3D en navegador
 📸 Vista previa
-![Preview](.assets/Game.png
-)
+![Preview](.assets/Game.png)
